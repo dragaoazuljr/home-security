@@ -16,7 +16,8 @@ lock = threading.Lock()
 def get_capture(idx):
     with lock:
         if idx not in caps:
-            caps[idx] = cv2.VideoCapture(CAMERAS[idx])
+            # Use FFMPEG backend and force TCP transport for better compatibility
+            caps[idx] = cv2.VideoCapture(CAMERAS[idx], cv2.CAP_FFMPEG)
         return caps[idx]
 
 def generate_frames(idx):
