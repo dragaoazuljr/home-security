@@ -32,8 +32,9 @@ def generate_frames(url, width, height):
         "ffmpeg",
         "-rtsp_transport", "udp",  # funciona na sua câmera
         "-i", url,
-        # "-an", # descarta áudio
+        "-an", # descarta áudio
         "-vf", f"scale={width}:{height}",  # força a resolução
+        "-r", "10",
         "-f", "image2pipe",
         "-pix_fmt", "bgr24",
         "-vcodec", "rawvideo",
