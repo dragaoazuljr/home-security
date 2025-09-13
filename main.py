@@ -3,6 +3,7 @@ import json
 import base64
 import requests
 import telegramify_markdown
+import concurrent.futures
 
 from telegram import Bot
 
@@ -146,19 +147,25 @@ def main():
     results = {}
     image_paths = []
 
-    for img_file in os.listdir(SNAPSHOT_DIR):
-        _, ext = os.path.splitext(img_file.lower())
-        if ext not in VALID_EXTENSIONS:
-            continue
-        img_path = os.path.join(SNAPSHOT_DIR, img_file)
-        image_paths.append(img_path)
-        print(f"🔍 Analisando {img_file}...")
-        try:
-            analysis = (analyze_image(img_path))
-            results[img_file] = analysis
-            print(f"✅ {img_file} -> {analysis}")
-        except Exception as e:
-            print(f"❌ Erro ao analisar {img_file}: {e}")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_img = {}
+        for img_file in os.listdir(SNAPSHOT_DIR):
+            _, ext = os.path.splitext(img_file.lower())
+            if ext not in VALID_EXTENSIONS:
+                continue
+            img_path = os.path.join(SNAPSHOT_DIR, img_file)
+            image_paths.append(img_path)
+            print(f"🔍 Analisando {img_file}...")
+            future = executor.submit(analyze_image, img_path)
+            future_to_img[future] = img_file
+        for future in concurrent.futures.as_completed(future_to_img):
+            img_file = future_to_img[future]
+            try:
+                analysis = future.result()
+                results[img_file] = analysis
+                print(f"✅ {img_file} -> {analysis}")
+            except Exception as e:
+                print(f"❌ Erro ao analisar {img_file}: {e}")
 
     print("📊 Gerando relatório global...")
     try:
