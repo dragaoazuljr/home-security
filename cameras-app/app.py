@@ -43,17 +43,23 @@ def generate_frames(url, width, height):
 
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, bufsize=10**8)
 
-    while True:
-        frame_size = width * height * 3
-        raw_frame = proc.stdout.read(frame_size)
-        if len(raw_frame) != frame_size:
-            continue  # ou reconecta
+    try:
+        while True:
+            frame_size = width * height * 3
+            raw_frame = proc.stdout.read(frame_size)
+            if len(raw_frame) != frame_size:
+                break  # ffmpeg parou ou erro
 
-        frame = np.frombuffer(raw_frame, np.uint8).reshape((height, width, 3))
-        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-
+            frame = np.frombuffer(raw_frame, np.uint8).reshape((height, width, 3))
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+    except (GeneratorExit, BrokenPipeError):
+        print("📴 Cliente desconectou, encerrando ffmpeg...")
+    finally:
+        if proc.poll() is None:  # ainda rodando
+            proc.kill()
+            proc.wait()
 
 @app.route('/')
 def index():
